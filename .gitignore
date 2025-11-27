@@ -1,0 +1,19 @@
+# Environment files
+.env
+!.env.example
+.env.local
+!.env.local.example
+
+# Firebase config (contains API keys)
+google-services.json
+
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+
+# Node
+node_modules/
