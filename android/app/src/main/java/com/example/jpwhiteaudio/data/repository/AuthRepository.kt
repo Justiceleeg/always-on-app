@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -111,5 +114,24 @@ class AuthRepository @Inject constructor(
             ?: return AuthResult.Error("Not logged in")
 
         return registerWithBackend(firebaseUser)
+    }
+
+    suspend fun enrollVoice(audioData: ByteArray): AuthResult<Unit> {
+        return try {
+            val requestBody = audioData.toRequestBody("audio/wav".toMediaType())
+            val audioPart = MultipartBody.Part.createFormData("audio", "enrollment.wav", requestBody)
+
+            val response = apiService.enrollVoice(audioPart)
+
+            if (response.success) {
+                // Update current user to reflect enrolled status
+                _currentUser.value = _currentUser.value?.copy(isEnrolled = true)
+                AuthResult.Success(Unit)
+            } else {
+                AuthResult.Error(response.message)
+            }
+        } catch (e: Exception) {
+            AuthResult.Error(e.message ?: "Failed to enroll voice", e)
+        }
     }
 }

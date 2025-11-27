@@ -18,7 +18,8 @@ data class RegisterUiState(
     val confirmPassword: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val registerSuccess: Boolean = false
+    val registerSuccess: Boolean = false,
+    val isEnrolled: Boolean = false
 )
 
 @HiltViewModel
@@ -84,7 +85,8 @@ class RegisterViewModel @Inject constructor(
                 is AuthResult.Success -> {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        registerSuccess = true
+                        registerSuccess = true,
+                        isEnrolled = result.data.isEnrolled
                     )
                 }
                 is AuthResult.Error -> {

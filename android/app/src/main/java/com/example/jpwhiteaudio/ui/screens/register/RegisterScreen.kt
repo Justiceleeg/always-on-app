@@ -51,7 +51,7 @@ import com.example.jpwhiteaudio.ui.theme.JpwhiteAudioTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit,
+    onRegisterSuccess: (isEnrolled: Boolean) -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: RegisterViewModel = hiltViewModel()
 ) {
@@ -63,7 +63,7 @@ fun RegisterScreen(
 
     LaunchedEffect(uiState.registerSuccess) {
         if (uiState.registerSuccess) {
-            onRegisterSuccess()
+            onRegisterSuccess(uiState.isEnrolled)
         }
     }
 

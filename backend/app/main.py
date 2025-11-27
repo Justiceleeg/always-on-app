@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
-from app.routers import health, auth
+from app.routers import health, auth, enrollment
 from app.config import get_settings
 
 # Configure structured logging
@@ -89,3 +89,4 @@ async def log_requests(request: Request, call_next):
 # Include routers
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(enrollment.router)

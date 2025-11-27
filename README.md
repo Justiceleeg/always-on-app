@@ -19,7 +19,7 @@ always-on-app/
 ### Prerequisites
 
 - Docker and Docker Compose
-- Python 3.11+
+- Python 3.12 (required for SpeechBrain/PyTorch compatibility)
 - Node.js 18+ (for web app)
 - Android Studio (for Android app)
 - Firebase project with Authentication enabled
@@ -86,7 +86,7 @@ Once running, view API docs at:
 
 ## Technology Stack
 
-- **Backend**: FastAPI 0.100+, SQLAlchemy 2.0+, Python 3.11+
+- **Backend**: FastAPI 0.100+, SQLAlchemy 2.0+, Python 3.12
 - **Database**: PostgreSQL 17 with pgvector 0.5+
 - **Authentication**: Firebase Auth
 - **Speech Processing**: SpeechBrain (speaker verification), OpenAI Whisper (transcription)

@@ -48,7 +48,7 @@ import com.example.jpwhiteaudio.ui.theme.JpwhiteAudioTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit,
+    onLoginSuccess: (isEnrolled: Boolean) -> Unit,
     onNavigateBack: () -> Unit,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
@@ -59,7 +59,7 @@ fun LoginScreen(
 
     LaunchedEffect(uiState.loginSuccess) {
         if (uiState.loginSuccess) {
-            onLoginSuccess()
+            onLoginSuccess(uiState.isEnrolled)
         }
     }
 

@@ -15,5 +15,8 @@ __pycache__/
 *.py[cod]
 venv/
 
+# ML models (downloaded at runtime)
+backend/pretrained_models/
+
 # Node
 node_modules/

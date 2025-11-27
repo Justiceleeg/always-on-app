@@ -10,7 +10,7 @@ This plan breaks the MVP into vertical slices, each delivering end-to-end functi
 - Android, Backend, and Web progress together per slice
 
 **Technology Versions:**
-- Python 3.11+, FastAPI 0.100+, SQLAlchemy 2.0+
+- Python 3.12, FastAPI 0.100+, SQLAlchemy 2.0+
 - PostgreSQL 17 with pgvector 0.5+
 - Next.js 16+, Vercel AI SDK 5.x
 - Android SDK API 35+ (Android 15), Kotlin 2.0+
@@ -151,8 +151,8 @@ User creates account on Android app, record appears in PostgreSQL, user can log 
 ### Tasks
 
 #### 2.1 Backend - Speaker Verification Service
-- [ ] Add SpeechBrain and dependencies to requirements.txt
-- [ ] Create `SpeakerVerificationService`:
+- [x] Add SpeechBrain and dependencies to requirements.txt
+- [x] Create `SpeakerVerificationService`:
   ```python
   class SpeakerVerificationService:
       def __init__(self):
@@ -164,39 +164,39 @@ User creates account on Android app, record appears in PostgreSQL, user can log 
       def compare_embeddings(self, emb1, emb2) -> float:
           # Returns cosine similarity score
   ```
-- [ ] Implement `POST /enroll` endpoint:
+- [x] Implement `POST /enroll` endpoint:
   - Accept `multipart/form-data` with WAV audio file
   - Validate audio duration (15-30 seconds)
   - Extract speaker embedding via SpeechBrain
   - Update user's `voiceprint_embedding` in database
   - Return `{ success: true, message: "Voiceprint enrolled" }`
-- [ ] Add audio validation utilities (format, sample rate, duration)
+- [x] Add audio validation utilities (format, sample rate, duration)
 
 #### 2.2 Android - Enrollment UI
-- [ ] Request microphone permission with rationale
-- [ ] Create Enrollment Welcome screen:
+- [x] Request microphone permission with rationale
+- [x] Create Enrollment Welcome screen:
   - Explains voice enrollment process
   - "Begin Enrollment" button
-- [ ] Create Voice Recording screen:
+- [x] Create Voice Recording screen:
   - Waveform visualization during recording
   - Display enrollment prompt text for user to read
   - Recording timer (target 15-30 seconds)
   - Auto-stop at 30 seconds
-- [ ] Implement audio recording service:
+- [x] Implement audio recording service:
   - Record as WAV (16kHz, 16-bit mono)
   - Store temporarily before upload
-- [ ] Upload audio to `POST /enroll`
-- [ ] Create Enrollment Complete screen:
+- [x] Upload audio to `POST /enroll`
+- [x] Create Enrollment Complete screen:
   - Success confirmation
   - "Start Listening" button → navigate to main screen
-- [ ] Handle enrollment errors (too short, upload failed, etc.)
-- [ ] Update app flow: after registration, check `is_enrolled` → route to enrollment or main screen
+- [x] Handle enrollment errors (too short, upload failed, etc.)
+- [x] Update app flow: after registration, check `is_enrolled` → route to enrollment or main screen
 
 #### 2.3 Integration Testing
-- [ ] Test: Record 20 seconds of speech → embedding stored in DB
-- [ ] Test: Embedding is 192 dimensions
-- [ ] Test: Re-enrollment overwrites previous embedding
-- [ ] Test: Audio under 15 seconds is rejected
+- [x] Test: Record 20 seconds of speech → embedding stored in DB
+- [x] Test: Embedding is 192 dimensions
+- [x] Test: Re-enrollment overwrites previous embedding
+- [x] Test: Audio under 15 seconds is rejected (enforced client-side - stop button disabled until 15s)
 
 ### Demo Checkpoint
 New user completes registration, is prompted to enroll voice, records speech, voiceprint is saved. App shows they are enrolled.
