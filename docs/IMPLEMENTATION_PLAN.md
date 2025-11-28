@@ -214,7 +214,7 @@ New user completes registration, is prompted to enroll voice, records speech, vo
 ### Tasks
 
 #### 3.1 Backend - Transcription Service
-- [ ] Create `TranscriptionService`:
+- [x] Create `TranscriptionService`:
   ```python
   class TranscriptionService:
       def __init__(self, openai_api_key: str):
@@ -223,7 +223,7 @@ New user completes registration, is prompted to enroll voice, records speech, vo
       async def transcribe(self, audio_bytes: bytes) -> str:
           # Call Whisper API, return transcript text
   ```
-- [ ] Create `transcripts` table model:
+- [x] Create `transcripts` table model:
   ```python
   class Transcript(Base):
       id: UUID
@@ -241,53 +241,53 @@ New user completes registration, is prompted to enroll voice, records speech, vo
       embedding: Vector(1536) (nullable)  # populated in Slice 5
       created_at: datetime
   ```
-- [ ] Implement `POST /transcribe` endpoint:
+- [x] Implement `POST /transcribe` endpoint:
   - Accept `multipart/form-data`: audio, timestamp_start, timestamp_end, latitude, longitude
   - Extract speaker embedding from audio
   - Compare against user's voiceprint (cosine similarity > 0.65)
   - If match: transcribe with Whisper, store transcript, return segments
   - If no match: return `{ processed: true, segments: [], filtered_segments: 1 }`
-- [ ] Implement session ID logic (new session if gap > 5 minutes)
-- [ ] Add endpoint to get recent transcripts: `GET /transcripts?limit=10`
+- [x] Implement session ID logic (new session if gap > 5 minutes)
+- [x] Add endpoint to get recent transcripts: `GET /transcripts?limit=10`
 
 #### 3.2 Android - Audio Capture Service
-- [ ] Create `AudioCaptureService` (Foreground Service):
+- [x] Create `AudioCaptureService` (Foreground Service):
   - Persistent notification showing "Listening..."
   - Continuous audio recording in background
   - Chunk audio into 10-second segments
   - 1-second overlap between chunks for continuity
-- [ ] Implement Voice Activity Detection (VAD):
+- [x] Implement Voice Activity Detection (VAD):
   - Only upload chunks with detected speech
   - Use simple energy-based VAD or WebRTC VAD
-- [ ] Create upload queue:
+- [x] Create upload queue:
   - Queue chunks when captured
   - Upload sequentially to `POST /transcribe`
   - Retry on failure (up to 3 times)
   - Discard chunks older than 1 hour
-- [ ] Handle offline mode:
+- [x] Handle offline mode:
   - Queue locally when no connection
   - Resume uploads when connection restored
 
 #### 3.3 Android - Main Listening Screen
-- [ ] Create Main Screen UI:
+- [x] Create Main Screen UI:
   - Large "Listening" indicator with pulse animation
   - Start/Stop listening toggle
   - Latest transcript preview card
   - Shows: speaker name, text snippet, timestamp
-- [ ] Display recognized speakers list (just "You" for now)
-- [ ] "Add Speaker" button (placeholder, implemented in Slice 4)
-- [ ] Settings gear icon (placeholder)
-- [ ] Connect to AudioCaptureService:
+- [x] Display recognized speakers list (just "You" for now)
+- [x] "Add Speaker" button (placeholder, implemented in Slice 4)
+- [x] Settings gear icon (placeholder)
+- [x] Connect to AudioCaptureService:
   - Start service when "Start Listening" tapped
   - Stop service when "Stop Listening" tapped
   - Observe transcript updates
 
 #### 3.4 Integration Testing
-- [ ] Test: Speak while listening → transcript appears in DB with correct speaker_name
-- [ ] Test: Play audio from different person → filtered out (not transcribed)
-- [ ] Test: Transcripts have correct timestamps
-- [ ] Test: Service survives app backgrounding
-- [ ] Test: Offline queueing works
+- [x] Test: Speak while listening → transcript appears in DB with correct speaker_name
+- [x] Test: Play audio from different person → filtered out (not transcribed)
+- [x] Test: Transcripts have correct timestamps (UTC, verified against local time)
+- [x] Test: Service survives app backgrounding
+- [ ] Test: Offline queueing works (skipped - not critical for MVP)
 
 ### Demo Checkpoint
 User starts listening, speaks into phone, their speech is recognized as "primary" speaker, transcribed via Whisper, and stored. Unknown speakers are filtered out.

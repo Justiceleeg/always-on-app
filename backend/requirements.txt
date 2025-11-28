@@ -21,6 +21,9 @@ python-jose[cryptography]>=3.3.0
 # HTTP client
 httpx>=0.25.0
 
+# OpenAI (Whisper transcription)
+openai>=1.0.0
+
 # Logging
 structlog>=23.2.0
 

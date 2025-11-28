@@ -136,6 +136,9 @@ fun AppNavigation(
                 },
                 onNavigateToEnrollment = {
                     navController.navigate(NavRoutes.VoiceEnrollment.route)
+                },
+                onNavigateToReEnroll = {
+                    navController.navigate(NavRoutes.VoiceEnrollment.route)
                 }
             )
         }

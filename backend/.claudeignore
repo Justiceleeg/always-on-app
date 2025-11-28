@@ -1,0 +1,10 @@
+# Environment files with secrets
+.env
+.env.local
+.env.*
+!.env.example
+!.env.local.example
+
+# Private keys
+*.pem
+*.key
