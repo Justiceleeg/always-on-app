@@ -4,6 +4,8 @@
 
 This plan breaks the MVP into vertical slices, each delivering end-to-end functionality. Development starts locally, with AWS deployment at Slice 3.5 after the core audio pipeline is proven.
 
+**Scope Note:** Per the original PRD, this MVP focuses on **primary user transcription only**. Multi-speaker consent enrollment is deferred to post-MVP (see Post-MVP section).
+
 **Key Principles:**
 - Each slice is independently demonstrable
 - Local development first (Docker Compose), AWS deployment mid-project
@@ -229,16 +231,14 @@ New user completes registration, is prompted to enroll voice, records speech, vo
       id: UUID
       user_id: UUID (FK to users)
       session_id: UUID
-      speaker_type: str  # 'primary' or 'consented'
-      speaker_id: UUID (nullable)  # FK to consented_speakers
-      speaker_name: str
+      speaker_name: str  # Primary user's name
       transcript_text: str
       timestamp_start: datetime
       timestamp_end: datetime
       latitude: Decimal (nullable)
       longitude: Decimal (nullable)
       location_name: str (nullable)
-      embedding: Vector(1536) (nullable)  # populated in Slice 5
+      embedding: Vector(1536) (nullable)  # populated in Slice 4
       created_at: datetime
   ```
 - [x] Implement `POST /transcribe` endpoint:
@@ -274,8 +274,7 @@ New user completes registration, is prompted to enroll voice, records speech, vo
   - Start/Stop listening toggle
   - Latest transcript preview card
   - Shows: speaker name, text snippet, timestamp
-- [x] Display recognized speakers list (just "You" for now)
-- [x] "Add Speaker" button (placeholder, implemented in Slice 4)
+- [x] Display recognized speaker (just "You" - primary user only for MVP)
 - [x] Settings gear icon (placeholder)
 - [x] Connect to AudioCaptureService:
   - Start service when "Start Listening" tapped
@@ -304,7 +303,7 @@ User starts listening, speaks into phone, their speech is recognized as "primary
 ### Tasks
 
 #### 3.5.1 CDK Infrastructure Completion
-- [ ] Fix S3 bucket: remove `publicReadAccess`, add server-side encryption
+- [ ] Remove S3 bucket from CDK (not needed for MVP - consent audio storage is post-MVP)
 - [ ] Add ECR repository for backend Docker images
 - [ ] Add ECS Fargate cluster
 - [ ] Add ECS Task Definition:
@@ -321,7 +320,7 @@ User starts listening, speaks into phone, their speech is recognized as "primary
   - Health check on `/health`
 - [ ] Add IAM roles:
   - Task execution role (ECR pull, CloudWatch logs)
-  - Task role (S3 access)
+  - Task role (for future S3 access - minimal permissions for MVP)
 - [ ] Add ACM certificate (or use AWS default for initial testing)
 - [ ] Enable pgvector extension on Aurora:
   - Run `CREATE EXTENSION vector` via migration
@@ -355,7 +354,6 @@ User starts listening, speaks into phone, their speech is recognized as "primary
   - `FIREBASE_PRIVATE_KEY`
   - `FIREBASE_CLIENT_EMAIL`
   - `OPENAI_API_KEY`
-  - `AWS_S3_BUCKET`
 
 #### 3.5.4 Validation Testing
 - [ ] Test: `/health` returns 200 via ALB
@@ -370,131 +368,7 @@ All functionality from Slices 1-3 works against AWS infrastructure. Android app 
 
 ---
 
-## Slice 4: Consented Speaker System
-
-### Goals
-- Implement multi-speaker consent enrollment
-- Store consent audio in S3 as legal proof
-- Enable verbal and manual revocation
-- Transcribe consented speakers alongside primary user
-
-### Tasks
-
-#### 4.1 Backend - Consent Endpoints
-- [ ] Create `consented_speakers` table model:
-  ```python
-  class ConsentedSpeaker(Base):
-      id: UUID
-      enrolled_by: UUID (FK to users)
-      name: str
-      voiceprint_embedding: Vector(192)
-      consent_audio_url: str  # S3 URL
-      consent_timestamp: datetime
-      consent_latitude: Decimal (nullable)
-      consent_longitude: Decimal (nullable)
-      revoked_at: datetime (nullable)
-      revocation_method: str (nullable)  # 'verbal' or 'manual'
-      revocation_audio_url: str (nullable)
-      revocation_latitude: Decimal (nullable)
-      revocation_longitude: Decimal (nullable)
-      created_at: datetime
-  ```
-- [ ] Create S3 service for audio upload:
-  ```python
-  class S3Service:
-      def upload_consent_audio(self, user_id: str, audio: bytes) -> str:
-          # Upload to s3://bucket/consent-audio/{user_id}/{uuid}.wav
-          # Return S3 URL
-
-      def upload_revocation_audio(self, user_id: str, audio: bytes) -> str:
-          # Upload to s3://bucket/revocation-audio/{user_id}/{uuid}.wav
-  ```
-- [ ] Implement consent phrase verification:
-  ```python
-  def verify_consent_phrase(transcript: str, primary_user_name: str) -> tuple[bool, str | None, str | None]:
-      # Check for consent words: "consent", "agree", "permission", etc.
-      # Check for recording words: "record", "transcrib", etc.
-      # Extract speaker name from "my name is X" or similar
-      # Return (is_valid, speaker_name, error_message)
-  ```
-- [ ] Implement `POST /speakers/consent`:
-  - Accept audio, latitude, longitude
-  - Transcribe audio via Whisper
-  - Verify consent phrase, extract speaker name
-  - Extract speaker embedding
-  - Upload consent audio to S3
-  - Create consented_speaker record
-  - Return `{ speaker_id, name, consented_at }`
-- [ ] Implement `POST /speakers/revoke` (verbal):
-  - Accept audio, latitude, longitude
-  - Extract speaker embedding
-  - Match against user's consented speakers
-  - Verify revocation phrase ("revoke", "withdraw", etc.)
-  - Upload revocation audio to S3
-  - Update consented_speaker with revocation data
-  - Return `{ speaker_id, name, revoked_at, method: "verbal" }`
-- [ ] Implement `DELETE /speakers/{speaker_id}` (manual):
-  - Verify speaker belongs to authenticated user
-  - Update consented_speaker: `revoked_at = now()`, `revocation_method = "manual"`
-  - Return `{ speaker_id, name, revoked_at, method: "manual" }`
-- [ ] Implement `GET /speakers`:
-  - Return list of consented speakers for user
-  - Include active and revoked, with status indicator
-- [ ] Update `POST /transcribe` to check consented speakers:
-  - After primary user check fails, check all active consented speakers
-  - If match found, transcribe with `speaker_type = "consented"`
-
-#### 4.2 Android - Consent Flow
-- [ ] Create Add Speaker screen:
-  - Instructions for consent process
-  - Display required consent phrase template
-  - "Hold to Record Consent" button
-- [ ] Implement consent recording:
-  - Record while button held
-  - Upload to `POST /speakers/consent`
-  - Show success/error based on phrase verification
-- [ ] Create Speaker Added confirmation screen
-- [ ] Handle consent errors:
-  - Missing consent acknowledgment
-  - Missing recording acknowledgment
-  - Could not extract speaker name
-  - Display specific error and allow retry
-
-#### 4.3 Android - Speaker Management
-- [ ] Create Manage Speakers screen:
-  - List active speakers with name and date added
-  - List revoked speakers with revocation date and method
-  - Three-dot menu per active speaker
-- [ ] Implement speaker options menu:
-  - "Verbal Revocation" option
-  - "Remove Manually" option
-  - "Cancel"
-- [ ] Create Verbal Revocation screen:
-  - Instructions for speaker to say revocation phrase
-  - "Hold to Record Revocation" button
-  - Upload to `POST /speakers/revoke`
-- [ ] Create Manual Revocation confirmation dialog:
-  - Warning that no audio proof will be stored
-  - Confirm/Cancel buttons
-  - Call `DELETE /speakers/{id}` on confirm
-- [ ] Update Main Screen:
-  - Show list of recognized speakers (You + consented)
-  - "Add Speaker" button navigates to consent flow
-
-#### 4.4 Integration Testing
-- [ ] Test: Consent phrase accepted → speaker added → audio in S3
-- [ ] Test: Invalid consent phrase → specific error returned
-- [ ] Test: Consented speaker speaks → transcribed with their name
-- [ ] Test: Verbal revocation by speaker → marked revoked with audio proof
-- [ ] Test: Manual revocation by primary → marked revoked, no audio
-- [ ] Test: Revoked speaker speaks → filtered out
-
-### Demo Checkpoint
-Primary user adds "Sarah" via consent phrase. Sarah's consent audio is stored in S3. When Sarah speaks, her speech is transcribed and attributed to her. Sarah can verbally revoke, or primary user can manually remove her.
-
----
-
-## Slice 5: Chat & RAG Interface
+## Slice 4: Chat & RAG Interface
 
 ### Goals
 - Embed transcripts for semantic search
@@ -503,7 +377,7 @@ Primary user adds "Sarah" via consent phrase. Sarah's consent audio is stored in
 
 ### Tasks
 
-#### 5.1 Backend - Embedding Service
+#### 4.1 Backend - Embedding Service
 - [ ] Create `EmbeddingService`:
   ```python
   class EmbeddingService:
@@ -516,7 +390,7 @@ Primary user adds "Sarah" via consent phrase. Sarah's consent audio is stored in
 
       def prepare_transcript_for_embedding(self, transcript: Transcript) -> str:
           # Format: "[Speaker] text (time context)"
-          # e.g., "[Sarah] The panel needs replacing (morning, January 15, 2025)"
+          # e.g., "[You] Check the junction box on north side (morning, January 15, 2025)"
   ```
 - [ ] Update `POST /transcribe` to generate and store embeddings:
   - After transcription, embed the text
@@ -529,7 +403,7 @@ Primary user adds "Sarah" via consent phrase. Sarah's consent audio is stored in
   ```
 - [ ] Backfill embeddings for existing transcripts (if any)
 
-#### 5.2 Backend - Chat Service
+#### 4.2 Backend - Chat Service
 - [ ] Implement time filter parsing:
   ```python
   def parse_time_filter(query: str) -> tuple[datetime | None, datetime | None]:
@@ -572,7 +446,7 @@ Primary user adds "Sarah" via consent phrase. Sarah's consent audio is stored in
   data: {"type": "done"}
   ```
 
-#### 5.3 Web - Chat Interface
+#### 4.3 Web - Chat Interface
 - [ ] Install and configure Vercel AI SDK 5.x
 - [ ] Create chat API route (`/api/chat`):
   - Proxy to backend `/chat` endpoint
@@ -587,25 +461,25 @@ Primary user adds "Sarah" via consent phrase. Sarah's consent audio is stored in
   - Quote from transcript
   - Expand/collapse on click
 - [ ] Create empty state with suggested queries:
-  - "What did we discuss at the job site yesterday?"
+  - "What did I discuss at the job site yesterday?"
   - "Summarize my conversations from this week"
-  - "What did Sarah say about the electrical work?"
+  - "What did I say about the electrical work?"
 - [ ] Add loading states and error handling
 - [ ] Style with Tailwind CSS
 
-#### 5.4 Integration Testing
-- [ ] Test: Query "What did Sarah say about X" → relevant transcript returned
+#### 4.4 Integration Testing
+- [ ] Test: Query "What did I say about X" → relevant transcript returned
 - [ ] Test: Query "yesterday" → only transcripts from yesterday
 - [ ] Test: Citations display correctly with metadata
 - [ ] Test: Streaming works smoothly
 - [ ] Test: No transcripts found → appropriate message
 
 ### Demo Checkpoint
-User asks "What did Sarah say about the junction box?" in web chat. System retrieves relevant transcript via semantic search, streams response with context, and displays citation card with speaker, time, and location.
+User asks "What did I say about the junction box?" in web chat. System retrieves relevant transcript via semantic search, streams response with context, and displays citation card with speaker, time, and location.
 
 ---
 
-## Slice 6: Polish & Location Context
+## Slice 5: Polish & Location Context
 
 ### Goals
 - Add GPS context to transcripts
@@ -614,7 +488,7 @@ User asks "What did Sarah say about the junction box?" in web chat. System retri
 
 ### Tasks
 
-#### 6.1 Android - Location Integration
+#### 5.1 Android - Location Integration
 - [ ] Request location permissions (fine + coarse)
 - [ ] Create `LocationService`:
   - Get current location when audio chunk captured
@@ -622,30 +496,29 @@ User asks "What did Sarah say about the junction box?" in web chat. System retri
 - [ ] Update AudioCaptureService to include location data
 - [ ] Display location in transcript preview on main screen
 
-#### 6.2 Backend - Location Enhancement
+#### 5.2 Backend - Location Enhancement
 - [ ] (Optional) Add reverse geocoding service:
   - Convert lat/long to human-readable address
   - Store in `transcript.location_name`
   - Use Google Maps API or similar
 - [ ] Include location in chat context for RAG
 
-#### 6.3 Web - Location Display
+#### 5.3 Web - Location Display
 - [ ] Update Citation Card to show location:
   - Display coordinates or address if available
   - Format: "Jan 15, 2025 · 9:34 AM · 123 Main St"
 
-#### 6.4 Android - UI Polish
+#### 5.4 Android - UI Polish
 - [ ] Add pulse animation to "Listening" indicator
-- [ ] Add waveform animation during recording (enrollment, consent)
+- [ ] Add waveform animation during recording (enrollment)
 - [ ] Implement proper empty states:
   - No transcripts yet
-  - No speakers added
 - [ ] Add loading indicators for API calls
 - [ ] Implement error toasts/snackbars
 - [ ] Add pull-to-refresh on transcript list
 - [ ] Review and polish all screen transitions
 
-#### 6.5 Web - UI Polish
+#### 5.5 Web - UI Polish
 - [ ] Add loading skeletons for chat
 - [ ] Smooth streaming text animation
 - [ ] Polish citation card expand/collapse animation
@@ -653,22 +526,20 @@ User asks "What did Sarah say about the junction box?" in web chat. System retri
 - [ ] Responsive design for mobile web
 - [ ] Empty state illustration
 
-#### 6.6 Demo Data & Script
+#### 5.6 Demo Data & Script
 - [ ] Create seed script for demo data:
   - Demo user account
-  - 2-3 consented speakers
-  - 20-30 realistic transcripts over past week
+  - 20-30 realistic transcripts over past week (primary user only)
   - Variety of topics (construction, electrical, scheduling)
   - Multiple locations
 - [ ] Write demo script/walkthrough:
   1. Show Android app enrollment
-  2. Add a consented speaker
-  3. Show listening and transcription
-  4. Switch to web, ask questions
-  5. Show citations and context
+  2. Show listening and transcription
+  3. Switch to web, ask questions about your conversations
+  4. Show citations with location and time context
 - [ ] Test full demo flow end-to-end
 
-#### 6.7 Final Testing & Documentation
+#### 5.7 Final Testing & Documentation
 - [ ] End-to-end test all user flows
 - [ ] Test on physical Android device
 - [ ] Performance testing (transcription latency, chat response time)
@@ -676,7 +547,7 @@ User asks "What did Sarah say about the junction box?" in web chat. System retri
 - [ ] Document environment setup for future developers
 
 ### Demo Checkpoint
-Complete, polished application ready for client demonstration. User can enroll voice, add speakers with consent, capture transcriptions with location data, and query their conversation history via natural language chat with rich citations.
+Complete, polished application ready for client demonstration. User can enroll voice, capture transcriptions of their own speech with location data, and query their conversation history via natural language chat with rich citations.
 
 ---
 
@@ -691,10 +562,6 @@ FIREBASE_PROJECT_ID=
 FIREBASE_PRIVATE_KEY=
 FIREBASE_CLIENT_EMAIL=
 OPENAI_API_KEY=
-AWS_S3_BUCKET=
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_REGION=
 SPEAKER_VERIFICATION_THRESHOLD=0.65
 ```
 
@@ -742,6 +609,134 @@ NEXT_PUBLIC_API_URL=http://localhost:8000  # or ALB endpoint for prod
 | Transcription WER | <10% | Whisper baseline, spot-check transcripts |
 | End-to-end latency | <30 seconds | Measure speech → stored transcript |
 | Chat retrieval relevance | >80% top-3 | Test 20 queries, check if correct transcript in top 3 |
+
+---
+
+## Post-MVP: Consented Speaker System
+
+> **Note:** This feature was part of the expanded MVP PRD but is deferred based on the original project requirements, which specified primary user transcription only.
+
+### Goals
+- Implement multi-speaker consent enrollment
+- Store consent audio in S3 as legal proof
+- Enable verbal and manual revocation
+- Transcribe consented speakers alongside primary user
+
+### Tasks
+
+#### Backend - Consent Endpoints
+- [ ] Create `consented_speakers` table model:
+  ```python
+  class ConsentedSpeaker(Base):
+      id: UUID
+      enrolled_by: UUID (FK to users)
+      name: str
+      voiceprint_embedding: Vector(192)
+      consent_audio_url: str  # S3 URL
+      consent_timestamp: datetime
+      consent_latitude: Decimal (nullable)
+      consent_longitude: Decimal (nullable)
+      revoked_at: datetime (nullable)
+      revocation_method: str (nullable)  # 'verbal' or 'manual'
+      revocation_audio_url: str (nullable)
+      revocation_latitude: Decimal (nullable)
+      revocation_longitude: Decimal (nullable)
+      created_at: datetime
+  ```
+- [ ] Add S3 bucket to CDK infrastructure with server-side encryption
+- [ ] Create S3 service for audio upload:
+  ```python
+  class S3Service:
+      def upload_consent_audio(self, user_id: str, audio: bytes) -> str:
+          # Upload to s3://bucket/consent-audio/{user_id}/{uuid}.wav
+          # Return S3 URL
+
+      def upload_revocation_audio(self, user_id: str, audio: bytes) -> str:
+          # Upload to s3://bucket/revocation-audio/{user_id}/{uuid}.wav
+  ```
+- [ ] Implement consent phrase verification:
+  ```python
+  def verify_consent_phrase(transcript: str, primary_user_name: str) -> tuple[bool, str | None, str | None]:
+      # Check for consent words: "consent", "agree", "permission", etc.
+      # Check for recording words: "record", "transcrib", etc.
+      # Extract speaker name from "my name is X" or similar
+      # Return (is_valid, speaker_name, error_message)
+  ```
+- [ ] Implement `POST /speakers/consent`:
+  - Accept audio, latitude, longitude
+  - Transcribe audio via Whisper
+  - Verify consent phrase, extract speaker name
+  - Extract speaker embedding
+  - Upload consent audio to S3
+  - Create consented_speaker record
+  - Return `{ speaker_id, name, consented_at }`
+- [ ] Implement `POST /speakers/revoke` (verbal):
+  - Accept audio, latitude, longitude
+  - Extract speaker embedding
+  - Match against user's consented speakers
+  - Verify revocation phrase ("revoke", "withdraw", etc.)
+  - Upload revocation audio to S3
+  - Update consented_speaker with revocation data
+  - Return `{ speaker_id, name, revoked_at, method: "verbal" }`
+- [ ] Implement `DELETE /speakers/{speaker_id}` (manual):
+  - Verify speaker belongs to authenticated user
+  - Update consented_speaker: `revoked_at = now()`, `revocation_method = "manual"`
+  - Return `{ speaker_id, name, revoked_at, method: "manual" }`
+- [ ] Implement `GET /speakers`:
+  - Return list of consented speakers for user
+  - Include active and revoked, with status indicator
+- [ ] Update `POST /transcribe` to check consented speakers:
+  - After primary user check fails, check all active consented speakers
+  - If match found, transcribe with `speaker_type = "consented"`
+- [ ] Update transcript model to add `speaker_type` and `speaker_id` fields
+
+#### Android - Consent Flow
+- [ ] Create Add Speaker screen:
+  - Instructions for consent process
+  - Display required consent phrase template
+  - "Hold to Record Consent" button
+- [ ] Implement consent recording:
+  - Record while button held
+  - Upload to `POST /speakers/consent`
+  - Show success/error based on phrase verification
+- [ ] Create Speaker Added confirmation screen
+- [ ] Handle consent errors:
+  - Missing consent acknowledgment
+  - Missing recording acknowledgment
+  - Could not extract speaker name
+  - Display specific error and allow retry
+
+#### Android - Speaker Management
+- [ ] Create Manage Speakers screen:
+  - List active speakers with name and date added
+  - List revoked speakers with revocation date and method
+  - Three-dot menu per active speaker
+- [ ] Implement speaker options menu:
+  - "Verbal Revocation" option
+  - "Remove Manually" option
+  - "Cancel"
+- [ ] Create Verbal Revocation screen:
+  - Instructions for speaker to say revocation phrase
+  - "Hold to Record Revocation" button
+  - Upload to `POST /speakers/revoke`
+- [ ] Create Manual Revocation confirmation dialog:
+  - Warning that no audio proof will be stored
+  - Confirm/Cancel buttons
+  - Call `DELETE /speakers/{id}` on confirm
+- [ ] Update Main Screen:
+  - Show list of recognized speakers (You + consented)
+  - "Add Speaker" button navigates to consent flow
+
+#### Integration Testing
+- [ ] Test: Consent phrase accepted → speaker added → audio in S3
+- [ ] Test: Invalid consent phrase → specific error returned
+- [ ] Test: Consented speaker speaks → transcribed with their name
+- [ ] Test: Verbal revocation by speaker → marked revoked with audio proof
+- [ ] Test: Manual revocation by primary → marked revoked, no audio
+- [ ] Test: Revoked speaker speaks → filtered out
+
+### Demo Checkpoint (Post-MVP)
+Primary user adds "Sarah" via consent phrase. Sarah's consent audio is stored in S3. When Sarah speaks, her speech is transcribed and attributed to her. Sarah can verbally revoke, or primary user can manually remove her.
 
 ---
 
