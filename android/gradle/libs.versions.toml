@@ -21,6 +21,8 @@ firebaseBom = "33.6.0"
 googleServices = "4.4.2"
 # Coroutines
 coroutines = "1.9.0"
+# Play Services Location
+playServicesLocation = "21.3.0"
 # KSP
 ksp = "2.0.21-1.0.27"
 
@@ -60,6 +62,8 @@ coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutin
 coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
 # Lifecycle ViewModel Compose
 lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
+# Play Services Location
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

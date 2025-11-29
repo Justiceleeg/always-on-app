@@ -101,7 +101,7 @@ class TranscriptionRepository @Inject constructor(
                     timestampEnd = parseTimestamp(segment.timestamp_end),
                     latitude = latitude,
                     longitude = longitude,
-                    locationName = null
+                    locationName = segment.location_name
                 )
                 _latestTranscript.value = transcript
 

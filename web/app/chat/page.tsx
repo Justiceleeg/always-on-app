@@ -2,6 +2,8 @@
 
 import { useAuth } from "@/components/AuthProvider";
 import { CitationCard } from "@/components/CitationCard";
+import { UserDropdown } from "@/components/UserDropdown";
+import { ChatLoadingSkeleton, TypingIndicator } from "@/components/Skeleton";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, FormEvent } from "react";
 import { signOut } from "firebase/auth";
@@ -116,11 +118,7 @@ export default function ChatPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
+    return <ChatLoadingSkeleton />;
   }
 
   if (!user) {
@@ -134,17 +132,7 @@ export default function ChatPage() {
       <header className="border-b border-black/[.08] dark:border-white/[.145]">
         <div className="mx-auto flex max-w-4xl items-center justify-between p-4">
           <h1 className="text-xl font-bold text-black dark:text-zinc-50">Frontier Audio</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">
-              {user.displayName || user.email}
-            </span>
-            <button
-              onClick={handleSignOut}
-              className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-            >
-              Sign out
-            </button>
-          </div>
+          <UserDropdown user={user} onSignOut={handleSignOut} />
         </div>
       </header>
 
@@ -165,20 +153,20 @@ export default function ChatPage() {
 
         {!hasMessages ? (
           // Empty state
-          <div className="flex h-[60vh] flex-col items-center justify-center text-center">
-            <div className="mb-4 text-6xl">🎙️</div>
-            <h2 className="mb-2 text-2xl font-semibold text-black dark:text-zinc-50">
+          <div className="flex h-[60vh] flex-col items-center justify-center px-4 text-center">
+            <div className="mb-4 text-5xl sm:text-6xl">🎙️</div>
+            <h2 className="mb-2 text-xl font-semibold text-black sm:text-2xl dark:text-zinc-50">
               Welcome, {user.displayName || "User"}
             </h2>
-            <p className="mb-8 max-w-md text-zinc-600 dark:text-zinc-400">
+            <p className="mb-6 max-w-md text-sm text-zinc-600 sm:mb-8 sm:text-base dark:text-zinc-400">
               Ask questions about your transcribed conversations. Try one of these:
             </p>
-            <div className="grid max-w-lg gap-2">
+            <div className="grid w-full max-w-lg gap-2">
               {SUGGESTED_QUERIES.map((query, index) => (
                 <button
                   key={index}
                   onClick={() => handleSuggestedQuery(query)}
-                  className="rounded-lg border border-black/[.08] bg-white px-4 py-3 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-white/[.145] dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="rounded-lg border border-black/[.08] bg-white px-3 py-2.5 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-50 sm:px-4 sm:py-3 dark:border-white/[.145] dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   {query}
                 </button>
@@ -187,24 +175,22 @@ export default function ChatPage() {
           </div>
         ) : (
           // Messages
-          <div className="space-y-6 pb-4">
+          <div className="space-y-4 pb-4 sm:space-y-6">
             {messages.map((message, index) => (
-              <div key={index} className="space-y-3">
+              <div key={index} className="space-y-2 sm:space-y-3">
                 <div
                   className={`flex ${
                     message.role === "user" ? "justify-end" : "justify-start"
                   }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    className={`max-w-[90%] rounded-2xl px-3 py-2.5 text-sm sm:max-w-[80%] sm:px-4 sm:py-3 sm:text-base ${
                       message.role === "user"
                         ? "bg-blue-600 text-white"
                         : "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
                     }`}
                   >
-                    {message.content || (
-                      <span className="inline-block h-4 w-4 animate-pulse rounded-full bg-zinc-300 dark:bg-zinc-600" />
-                    )}
+                    {message.content || <TypingIndicator />}
                   </div>
                 </div>
 
@@ -226,7 +212,7 @@ export default function ChatPage() {
         )}
       </main>
 
-      <footer className="border-t border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-black">
+      <footer className="border-t border-black/[.08] bg-white p-3 sm:p-4 dark:border-white/[.145] dark:bg-black">
         <form onSubmit={handleSubmit} className="mx-auto max-w-4xl">
           <div className="flex gap-2">
             <input
@@ -235,12 +221,12 @@ export default function ChatPage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about your conversations..."
               disabled={isStreaming}
-              className="h-12 flex-1 rounded-lg border border-black/[.08] bg-transparent px-4 focus:border-blue-500 focus:outline-none disabled:opacity-50 dark:border-white/[.145]"
+              className="h-11 flex-1 rounded-lg border border-black/[.08] bg-transparent px-3 text-sm focus:border-blue-500 focus:outline-none disabled:opacity-50 sm:h-12 sm:px-4 sm:text-base dark:border-white/[.145]"
             />
             <button
               type="submit"
               disabled={isStreaming || !input.trim()}
-              className="flex h-12 items-center justify-center rounded-full bg-blue-600 px-6 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-blue-600 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:h-12 sm:w-auto sm:px-6"
             >
               {isStreaming ? (
                 <svg
@@ -263,7 +249,12 @@ export default function ChatPage() {
                   />
                 </svg>
               ) : (
-                "Send"
+                <>
+                  <span className="hidden sm:inline">Send</span>
+                  <svg className="h-5 w-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </>
               )}
             </button>
           </div>

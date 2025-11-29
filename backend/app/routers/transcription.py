@@ -21,6 +21,7 @@ from app.services.firebase_auth import verify_firebase_token, FirebaseUser
 from app.services.speaker_verification import get_speaker_verification_service
 from app.services.transcription import get_transcription_service
 from app.services.embedding import get_embedding_service
+from app.services.geocoding import get_geocoding_service
 from app.config import get_settings
 
 logger = structlog.get_logger()
@@ -213,6 +214,24 @@ async def transcribe_audio(
     # Get or create session ID
     session_id = await get_or_create_session_id(db, user.id, parsed_timestamp_start)
 
+    # Reverse geocode location if coordinates are provided
+    location_name = None
+    if parsed_latitude is not None and parsed_longitude is not None:
+        try:
+            geocoding_service = get_geocoding_service()
+            location_name = await geocoding_service.reverse_geocode(
+                latitude=float(parsed_latitude),
+                longitude=float(parsed_longitude),
+            )
+        except Exception as e:
+            # Log but don't fail if geocoding fails
+            logger.warning(
+                "Failed to reverse geocode location",
+                lat=parsed_latitude,
+                lon=parsed_longitude,
+                error=str(e),
+            )
+
     # Create transcript object first (without embedding)
     transcript = Transcript(
         user_id=user.id,
@@ -225,7 +244,7 @@ async def transcribe_audio(
         timestamp_end=parsed_timestamp_end,
         latitude=parsed_latitude,
         longitude=parsed_longitude,
-        location_name=None,  # Could be populated via reverse geocoding later
+        location_name=location_name,
         embedding=None,
     )
 
@@ -269,6 +288,7 @@ async def transcribe_audio(
         text=transcript_text,
         timestamp_start=parsed_timestamp_start,
         timestamp_end=parsed_timestamp_end,
+        location_name=location_name,
     )
 
     return TranscribeResponse(

@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import com.example.jpwhiteaudio.JpwhiteAudioApplication
 import com.example.jpwhiteaudio.MainActivity
 import com.example.jpwhiteaudio.R
+import com.example.jpwhiteaudio.data.location.LocationService
 import com.example.jpwhiteaudio.data.repository.TranscriptionRepository
 import com.example.jpwhiteaudio.data.repository.TranscriptionResult
 import dagger.hilt.android.AndroidEntryPoint
@@ -123,16 +124,15 @@ class AudioCaptureService : Service() {
     @Inject
     lateinit var transcriptionRepository: TranscriptionRepository
 
+    @Inject
+    lateinit var locationService: LocationService
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var recordingJob: Job? = null
     private var uploadJob: Job? = null
 
     private var audioRecord: AudioRecord? = null
     private val uploadQueue = ConcurrentLinkedQueue<AudioChunk>()
-
-    // Current location (to be set externally)
-    var currentLatitude: Double? = null
-    var currentLongitude: Double? = null
 
     private val binder = LocalBinder()
 
@@ -180,6 +180,14 @@ class AudioCaptureService : Service() {
         _uploadedCount.value = 0
         _filteredCount.value = 0
 
+        // Start location updates for geo-tagging transcripts
+        if (locationService.hasLocationPermission()) {
+            locationService.startLocationUpdates()
+            Log.d(TAG, "Location updates started")
+        } else {
+            Log.w(TAG, "Location permission not granted - transcripts will not have location data")
+        }
+
         // Start recording in chunks
         recordingJob = serviceScope.launch {
             recordAudioChunks()
@@ -195,6 +203,9 @@ class AudioCaptureService : Service() {
         Log.d(TAG, "Stopping audio capture service")
 
         _isListening.value = false
+
+        // Stop location updates to save battery
+        locationService.stopLocationUpdates()
 
         recordingJob?.cancel()
         recordingJob = null
@@ -300,15 +311,17 @@ class AudioCaptureService : Service() {
                 if (hasSpeech) {
                     // Create WAV and queue for upload
                     val wavData = createWavFile(rawData)
+                    val latitude = locationService.getCurrentLatitude()
+                    val longitude = locationService.getCurrentLongitude()
                     val chunk = AudioChunk(
                         audioData = wavData,
                         timestampStart = chunkStart,
                         timestampEnd = chunkEnd,
-                        latitude = currentLatitude,
-                        longitude = currentLongitude
+                        latitude = latitude,
+                        longitude = longitude
                     )
                     uploadQueue.offer(chunk)
-                    Log.d(TAG, "Chunk queued for upload, queue size: ${uploadQueue.size}")
+                    Log.d(TAG, "Chunk queued for upload, queue size: ${uploadQueue.size}, location: ($latitude, $longitude)")
                 } else {
                     Log.d(TAG, "Chunk filtered (no speech detected)")
                 }

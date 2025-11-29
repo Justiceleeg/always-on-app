@@ -15,6 +15,7 @@ class TranscriptSegment(BaseModel):
     text: str
     timestamp_start: datetime
     timestamp_end: datetime
+    location_name: str | None = None
 
 
 class TranscribeResponse(BaseModel):

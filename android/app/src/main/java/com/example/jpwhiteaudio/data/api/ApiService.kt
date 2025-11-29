@@ -69,7 +69,8 @@ data class TranscriptSegment(
     val speaker_name: String,
     val text: String,
     val timestamp_start: String,
-    val timestamp_end: String
+    val timestamp_end: String,
+    val location_name: String?
 )
 
 data class TranscriptListResponse(

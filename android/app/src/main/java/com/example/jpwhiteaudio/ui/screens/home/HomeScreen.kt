@@ -1,5 +1,8 @@
 package com.example.jpwhiteaudio.ui.screens.home
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -22,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Person
@@ -42,8 +46,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -66,6 +74,31 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var locationPermissionRequested by remember { mutableStateOf(false) }
+
+    // Request location permission when user wants to start listening
+    // Location is optional - listening works without it, but transcripts won't have location data
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        // Start listening regardless of permission result - location is optional
+        viewModel.startListening()
+    }
+
+    // Function to handle start listening with location permission request
+    val handleStartListening: () -> Unit = {
+        if (!locationPermissionRequested) {
+            locationPermissionRequested = true
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        } else {
+            viewModel.startListening()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -127,7 +160,8 @@ fun HomeScreen(
                     // Enrolled - show listening screen
                     ListeningContent(
                         uiState = uiState,
-                        onToggleListening = { viewModel.toggleListening() },
+                        onStartListening = handleStartListening,
+                        onStopListening = { viewModel.stopListening() },
                         onReEnroll = onNavigateToReEnroll
                     )
                 }
@@ -191,7 +225,8 @@ private fun NotEnrolledContent(
 @Composable
 private fun ListeningContent(
     uiState: HomeUiState,
-    onToggleListening: () -> Unit,
+    onStartListening: () -> Unit,
+    onStopListening: () -> Unit,
     onReEnroll: () -> Unit
 ) {
     Column(
@@ -208,7 +243,7 @@ private fun ListeningContent(
         // Start/Stop button
         if (uiState.isListening) {
             Button(
-                onClick = onToggleListening,
+                onClick = onStopListening,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
                 ),
@@ -223,7 +258,7 @@ private fun ListeningContent(
             }
         } else {
             Button(
-                onClick = onToggleListening,
+                onClick = onStartListening,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
@@ -249,9 +284,13 @@ private fun ListeningContent(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Latest transcript preview
-        uiState.latestTranscript?.let { transcript ->
-            TranscriptPreviewCard(transcript = transcript)
+        // Latest transcript preview or empty state
+        if (uiState.latestTranscript != null) {
+            TranscriptPreviewCard(transcript = uiState.latestTranscript!!)
+            Spacer(modifier = Modifier.height(16.dp))
+        } else if (!uiState.isListening && uiState.uploadedCount == 0) {
+            // Empty state when not listening and no transcripts
+            EmptyTranscriptsCard()
             Spacer(modifier = Modifier.height(16.dp))
         }
 
@@ -445,6 +484,28 @@ private fun TranscriptPreviewCard(transcript: com.example.jpwhiteaudio.data.repo
                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                 )
             }
+            // Show location if available
+            transcript.locationName?.let { location ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = location,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = transcript.text,
@@ -452,6 +513,43 @@ private fun TranscriptPreviewCard(transcript: com.example.jpwhiteaudio.data.repo
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyTranscriptsCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.Mic,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "No transcripts yet",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Tap \"Start Listening\" to begin capturing and transcribing your conversations.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
             )
         }
     }

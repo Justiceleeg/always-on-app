@@ -20,8 +20,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // API base URL - local emulator default, AWS for release
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
+        // API base URL - using AWS for testing with seeded data
+        buildConfigField("String", "API_BASE_URL", "\"https://jpwhite.gauntlet3.com\"")
     }
 
     buildTypes {
@@ -83,6 +83,9 @@ dependencies {
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
     implementation(libs.coroutines.play.services)
+
+    // Play Services Location
+    implementation(libs.play.services.location)
 
     // ViewModel Compose
     implementation(libs.lifecycle.viewmodel.compose)
