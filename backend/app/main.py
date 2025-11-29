@@ -1,3 +1,5 @@
+import logging
+import sys
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -6,6 +8,13 @@ from fastapi.middleware.cors import CORSMiddleware
 import structlog
 from app.routers import health, auth, enrollment, transcription
 from app.config import get_settings
+
+# Configure standard library logging to output to stdout
+logging.basicConfig(
+    format="%(message)s",
+    stream=sys.stdout,
+    level=logging.INFO,
+)
 
 # Configure structured logging
 structlog.configure(

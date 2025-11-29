@@ -303,65 +303,60 @@ User starts listening, speaks into phone, their speech is recognized as "primary
 ### Tasks
 
 #### 3.5.1 CDK Infrastructure Completion
-- [ ] Remove S3 bucket from CDK (not needed for MVP - consent audio storage is post-MVP)
-- [ ] Add ECR repository for backend Docker images
-- [ ] Add ECS Fargate cluster
-- [ ] Add ECS Task Definition:
+- [x] Remove S3 bucket from CDK (not needed for MVP - consent audio storage is post-MVP)
+- [x] Add ECR repository for backend Docker images
+- [x] Add ECS Fargate cluster
+- [x] Add ECS Task Definition:
   - 0.5 vCPU, 1GB RAM
   - Container from ECR
   - Environment variables for config
   - CloudWatch log group
-- [ ] Add ECS Service:
+- [x] Add ECS Service:
   - Desired count: 1
   - Connect to ALB
-- [ ] Add Application Load Balancer:
-  - HTTPS listener (port 443)
-  - HTTP redirect to HTTPS
+- [x] Add Application Load Balancer:
+  - HTTP listener (port 80) for initial testing
   - Health check on `/health`
-- [ ] Add IAM roles:
+  - HTTPS can be added when ACM certificate is configured
+- [x] Add IAM roles:
   - Task execution role (ECR pull, CloudWatch logs)
-  - Task role (for future S3 access - minimal permissions for MVP)
-- [ ] Add ACM certificate (or use AWS default for initial testing)
-- [ ] Enable pgvector extension on Aurora:
-  - Run `CREATE EXTENSION vector` via migration
-- [ ] Export ALB DNS name as CloudFormation output
+  - Task role (minimal permissions for MVP)
+- [x] Using HTTP for initial testing (ACM certificate can be added later)
+- [x] Enable pgvector extension on Aurora:
+  - Already enabled on existing Aurora instance (tables with Vector columns exist)
+- [x] Export ALB DNS name as CloudFormation output
 
 #### 3.5.2 Deployment Pipeline
-- [ ] Create deployment script:
-  ```bash
-  # Build and push Docker image
-  docker build -t frontier-backend ./backend
-  aws ecr get-login-password | docker login --username AWS --password-stdin <ecr-repo>
-  docker tag frontier-backend:latest <ecr-repo>:latest
-  docker push <ecr-repo>:latest
-
-  # Deploy infrastructure
-  cd infra && cdk deploy
-
-  # Force new ECS deployment
-  aws ecs update-service --cluster <cluster> --service <service> --force-new-deployment
-  ```
-- [ ] Create database migration script for Aurora
-- [ ] Document environment variables needed in ECS task definition
+- [x] Create deployment script (`scripts/deploy.sh`):
+  - Builds and pushes Docker image to ECR
+  - Deploys CDK infrastructure
+  - Forces new ECS deployment
+  - Waits for service to stabilize
+  - Usage: `./scripts/deploy.sh [--skip-build] [--skip-cdk] [--skip-migrate]`
+- [x] Create database migration script (`scripts/migrate.sh`):
+  - Runs Alembic migrations against Aurora
+  - Auto-discovers Aurora endpoint from CloudFormation
+  - Usage: `./scripts/migrate.sh [upgrade|downgrade|current|history] [revision]`
+- [x] Document environment variables in `infra/.env.example`
 
 #### 3.5.3 Configuration Updates
-- [ ] Update Android app to support configurable API base URL
-- [ ] Create production build variant pointing to ALB endpoint
-- [ ] Update Next.js to use environment variable for API URL
-- [ ] Set up environment variables in ECS task definition:
-  - `DATABASE_URL` (Aurora endpoint)
-  - `FIREBASE_PROJECT_ID`
-  - `FIREBASE_PRIVATE_KEY`
-  - `FIREBASE_CLIENT_EMAIL`
-  - `OPENAI_API_KEY`
+- [x] Update Android app to support configurable API base URL
+  - Debug: `http://10.0.2.2:8000` (emulator localhost)
+  - Release: `https://jpwhite.gauntlet3.com`
+- [x] Create production build variant pointing to ALB endpoint (already configured in build.gradle.kts)
+- [x] Update Next.js to use environment variable for API URL
+  - Uses `NEXT_PUBLIC_API_URL` env var
+  - Set `https://jpwhite.gauntlet3.com` in Vercel environment variables
+- [x] Set up environment variables in ECS task definition (configured in CDK)
 
 #### 3.5.4 Validation Testing
-- [ ] Test: `/health` returns 200 via ALB
-- [ ] Test: `/health/ready` confirms Aurora connection
-- [ ] Test: Android app can register user via AWS endpoint
-- [ ] Test: Voice enrollment works end-to-end on AWS
-- [ ] Test: Transcription pipeline works on AWS
-- [ ] Test: CloudWatch logs show requests
+- [x] Test: `/health` returns 200 via ALB
+- [x] Test: `/health/ready` confirms Aurora connection
+- [x] Test: Web app can register/login user via AWS endpoint
+- [x] Test: Android app can register user via AWS endpoint
+- [x] Test: Voice enrollment works end-to-end on AWS
+- [x] Test: Transcription pipeline works on AWS
+- [x] Test: CloudWatch logs show requests
 
 ### Demo Checkpoint
 All functionality from Slices 1-3 works against AWS infrastructure. Android app connects to ALB endpoint, users are stored in Aurora, transcripts are processed and stored.

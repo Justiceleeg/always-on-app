@@ -20,7 +20,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // API base URL - use 10.0.2.2 for emulator to reach host localhost
+        // API base URL - local emulator default, AWS for release
         buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000\"")
     }
 
@@ -31,7 +31,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://api.jpwhiteaudio.com\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://jpwhite.gauntlet3.com\"")
         }
     }
     compileOptions {
