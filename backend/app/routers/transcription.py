@@ -20,6 +20,7 @@ from app.schemas.transcript import (
 from app.services.firebase_auth import verify_firebase_token, FirebaseUser
 from app.services.speaker_verification import get_speaker_verification_service
 from app.services.transcription import get_transcription_service
+from app.services.embedding import get_embedding_service
 from app.config import get_settings
 
 logger = structlog.get_logger()
@@ -212,7 +213,7 @@ async def transcribe_audio(
     # Get or create session ID
     session_id = await get_or_create_session_id(db, user.id, parsed_timestamp_start)
 
-    # Create and store transcript
+    # Create transcript object first (without embedding)
     transcript = Transcript(
         user_id=user.id,
         session_id=session_id,
@@ -225,8 +226,28 @@ async def transcribe_audio(
         latitude=parsed_latitude,
         longitude=parsed_longitude,
         location_name=None,  # Could be populated via reverse geocoding later
-        embedding=None,  # Populated in Slice 5 for RAG
+        embedding=None,
     )
+
+    # Generate embedding for RAG search
+    try:
+        embedding_service = get_embedding_service()
+        embedding_text = embedding_service.prepare_transcript_for_embedding(transcript)
+        embedding = await embedding_service.embed_text(embedding_text)
+        transcript.embedding = embedding
+        logger.info(
+            "Generated embedding for transcript",
+            user_id=str(user.id),
+            embedding_dims=len(embedding),
+        )
+    except Exception as e:
+        # Log but don't fail the transcription if embedding fails
+        logger.warning(
+            "Failed to generate embedding for transcript",
+            user_id=str(user.id),
+            error=str(e),
+        )
+        # transcript.embedding remains None
 
     db.add(transcript)
     await db.commit()

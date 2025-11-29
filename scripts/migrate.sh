@@ -24,16 +24,27 @@ echo "=========================================="
 
 # Check if DATABASE_URL is set
 if [ -z "$DATABASE_URL" ]; then
-  # Try to load from infra/.env
+  # Try to load database credentials from infra/.env (only DB-related vars to avoid issues with special chars)
   if [ -f "$PROJECT_ROOT/infra/.env" ]; then
-    echo "Loading credentials from infra/.env..."
-    export $(grep -v '^#' "$PROJECT_ROOT/infra/.env" | xargs)
+    echo "Loading database credentials from infra/.env..."
+    # Only export database-related variables to avoid issues with FIREBASE_PRIVATE_KEY containing \n
+    while IFS='=' read -r key value; do
+      case "$key" in
+        DATABASE_URL|DB_USERNAME|DB_PASSWORD|DB_HOST|DB_PORT|DB_NAME)
+          export "$key=$value"
+          ;;
+      esac
+    done < <(grep -v '^#' "$PROJECT_ROOT/infra/.env" | grep -v '^$')
   fi
 
   # Try to load from backend/.env
   if [ -z "$DATABASE_URL" ] && [ -f "$BACKEND_DIR/.env" ]; then
     echo "Loading DATABASE_URL from backend/.env..."
-    export $(grep -v '^#' "$BACKEND_DIR/.env" | grep DATABASE_URL | xargs)
+    while IFS='=' read -r key value; do
+      if [ "$key" = "DATABASE_URL" ]; then
+        export DATABASE_URL="$value"
+      fi
+    done < <(grep -v '^#' "$BACKEND_DIR/.env" | grep -v '^$')
   fi
 
   # If still not set, try to construct from infra env vars
@@ -69,6 +80,13 @@ echo "Running migration: $COMMAND $REVISION"
 echo ""
 
 cd "$BACKEND_DIR"
+
+# Activate virtual environment if it exists
+if [ -f ".venv/bin/activate" ]; then
+  source .venv/bin/activate
+elif [ -f "venv/bin/activate" ]; then
+  source venv/bin/activate
+fi
 
 # Run alembic (uses async engine configured in env.py)
 DATABASE_URL="$DATABASE_URL" python -m alembic $COMMAND $REVISION

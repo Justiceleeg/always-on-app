@@ -373,7 +373,7 @@ All functionality from Slices 1-3 works against AWS infrastructure. Android app 
 ### Tasks
 
 #### 4.1 Backend - Embedding Service
-- [ ] Create `EmbeddingService`:
+- [x] Create `EmbeddingService`:
   ```python
   class EmbeddingService:
       def __init__(self, openai_api_key: str):
@@ -387,10 +387,10 @@ All functionality from Slices 1-3 works against AWS infrastructure. Android app 
           # Format: "[Speaker] text (time context)"
           # e.g., "[You] Check the junction box on north side (morning, January 15, 2025)"
   ```
-- [ ] Update `POST /transcribe` to generate and store embeddings:
+- [x] Update `POST /transcribe` to generate and store embeddings:
   - After transcription, embed the text
   - Store in `transcript.embedding`
-- [ ] Create database migration to add HNSW index on embeddings:
+- [x] Create database migration to add HNSW index on embeddings:
   ```sql
   CREATE INDEX idx_transcripts_embedding
   ON transcripts USING hnsw (embedding vector_cosine_ops)
@@ -399,13 +399,13 @@ All functionality from Slices 1-3 works against AWS infrastructure. Android app 
 - [ ] Backfill embeddings for existing transcripts (if any)
 
 #### 4.2 Backend - Chat Service
-- [ ] Implement time filter parsing:
+- [x] Implement time filter parsing (timezone-aware using client timezone):
   ```python
   def parse_time_filter(query: str) -> tuple[datetime | None, datetime | None]:
       # Parse "today", "yesterday", "this week", "last week"
       # Return (start_time, end_time) or (None, None)
   ```
-- [ ] Implement vector search:
+- [x] Implement vector search:
   ```python
   async def vector_search(
       query_embedding: list[float],
@@ -417,7 +417,7 @@ All functionality from Slices 1-3 works against AWS infrastructure. Android app 
       # Query pgvector with optional time filter
       # Return top-k similar transcripts
   ```
-- [ ] Implement context builder with token management:
+- [x] Implement context builder with token management:
   ```python
   def build_chat_context(
       transcripts: list[Transcript],
@@ -426,15 +426,15 @@ All functionality from Slices 1-3 works against AWS infrastructure. Android app 
       # Build context string from transcripts
       # Truncate if exceeds token limit
   ```
-- [ ] Implement `POST /chat` endpoint:
-  - Accept `{ message, conversation_history }`
-  - Parse time filter from message
+- [x] Implement `POST /chat` endpoint:
+  - Accept `{ message, conversation_history, timezone }`
+  - Parse time filter from message (timezone-aware)
   - Embed user query
   - Retrieve relevant transcripts via vector search
   - Build context with retrieved transcripts
-  - Stream GPT-4 response with system prompt
+  - Stream GPT-4o response with system prompt
   - Include citation metadata in response
-- [ ] Define chat response streaming format:
+- [x] Define chat response streaming format:
   ```
   data: {"type": "text", "content": "Based on..."}
   data: {"type": "citation", "transcript_id": "...", "speaker": "...", "timestamp": "...", "location": "..."}
@@ -442,32 +442,33 @@ All functionality from Slices 1-3 works against AWS infrastructure. Android app 
   ```
 
 #### 4.3 Web - Chat Interface
-- [ ] Install and configure Vercel AI SDK 5.x
-- [ ] Create chat API route (`/api/chat`):
-  - Proxy to backend `/chat` endpoint
-  - Handle streaming responses
-- [ ] Build Chat page UI:
+- [x] Install and configure Vercel AI SDK 5.x (already installed)
+- [x] Create streaming chat client in `lib/api.ts`:
+  - Direct SSE streaming from backend `/chat` endpoint
+  - Handle streaming responses with async generator
+- [x] Build Chat page UI:
   - Message list (user messages + assistant responses)
   - Input field with send button
-  - Streaming text display
-- [ ] Implement Citation Card component:
+  - Streaming text display with loading indicator
+- [x] Implement Citation Card component:
   - Collapsible card showing source transcript
   - Speaker name, timestamp, location
   - Quote from transcript
   - Expand/collapse on click
-- [ ] Create empty state with suggested queries:
+- [x] Create empty state with suggested queries:
   - "What did I discuss at the job site yesterday?"
   - "Summarize my conversations from this week"
   - "What did I say about the electrical work?"
-- [ ] Add loading states and error handling
-- [ ] Style with Tailwind CSS
+  - "What topics came up today?"
+- [x] Add loading states and error handling
+- [x] Style with Tailwind CSS
 
 #### 4.4 Integration Testing
-- [ ] Test: Query "What did I say about X" → relevant transcript returned
-- [ ] Test: Query "yesterday" → only transcripts from yesterday
-- [ ] Test: Citations display correctly with metadata
-- [ ] Test: Streaming works smoothly
-- [ ] Test: No transcripts found → appropriate message
+- [x] Test: Query "What did I say about X" → relevant transcript returned
+- [x] Test: Query "yesterday" → only transcripts from yesterday
+- [x] Test: Citations display correctly with metadata
+- [x] Test: Streaming works smoothly
+- [x] Test: No transcripts found → appropriate message
 
 ### Demo Checkpoint
 User asks "What did I say about the junction box?" in web chat. System retrieves relevant transcript via semantic search, streams response with context, and displays citation card with speaker, time, and location.

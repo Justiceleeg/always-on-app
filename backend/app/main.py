@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import structlog
-from app.routers import health, auth, enrollment, transcription
+from app.routers import health, auth, enrollment, transcription, chat
 from app.config import get_settings
 
 # Configure standard library logging to output to stdout
@@ -100,3 +100,4 @@ app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(enrollment.router)
 app.include_router(transcription.router)
+app.include_router(chat.router)
