@@ -1,6 +1,45 @@
 # Frontier Audio MVP
 
-Always-On Selective Speaker Transcription - An audio capture and transcription system that identifies consented speakers and provides RAG-based querying.
+An always-on audio capture system designed for frontline workers. It continuously listens, identifies consented speakers via voiceprint recognition, transcribes their conversations, and provides a searchable chat interface powered by RAG.
+
+## Features
+
+- **Always-on capture** – Background audio recording on Android devices
+- **Speaker verification** – ECAPA-TDNN voiceprint matching ensures only enrolled speakers are transcribed
+- **Consent management** – Verbal consent with recorded proof; supports revocation
+- **Semantic search** – Query past conversations in natural language via chat UI
+- **Location tagging** – Transcripts tagged with GPS coordinates and timestamps
+- **Privacy-first** – Unknown speakers are filtered out entirely
+
+## Architecture
+
+```
+┌──────────────┐         ┌──────────────┐
+│ Android App  │         │  Next.js Web │
+│  (Capture)   │         │  (Chat UI)   │
+└──────┬───────┘         └───────┬──────┘
+       │                         │
+       └────────────┬────────────┘
+                    │
+       ┌────────────▼────────────┐
+       │     FastAPI Backend     │
+       │      (ECS Fargate)      │
+       │                         │
+       │  • Speaker Verification │
+       │  • Transcription        │
+       │  • RAG Chat Engine      │
+       └────────────┬────────────┘
+                    │
+       ┌────────────▼────────────┐
+       │  PostgreSQL + pgvector  │
+       │   (Aurora Serverless)   │
+       └─────────────────────────┘
+```
+
+**Data flow:**
+1. Android captures audio chunks → Backend verifies speaker via voiceprint
+2. Matched audio sent to Whisper API → Transcript + embedding stored in pgvector
+3. Web chat queries embeddings → GPT-4 generates answers with citations
 
 ## Project Structure
 
@@ -86,17 +125,27 @@ Once running, view API docs at:
 
 ## Technology Stack
 
-- **Backend**: FastAPI 0.100+, SQLAlchemy 2.0+, Python 3.12
-- **Database**: PostgreSQL 17 with pgvector 0.5+
-- **Authentication**: Firebase Auth
-- **Speech Processing**: SpeechBrain (speaker verification), OpenAI Whisper (transcription)
-- **Embeddings**: OpenAI text-embedding-3-small
-- **Android**: Kotlin 2.0+, Jetpack Compose, SDK API 35+
-- **Web**: Next.js 16+, Vercel AI SDK 5.x
+| Layer | Technologies |
+|-------|-------------|
+| **Backend** | FastAPI, SQLAlchemy 2.0, Python 3.12 |
+| **Database** | PostgreSQL 17, pgvector (HNSW indexing) |
+| **ML/AI** | SpeechBrain ECAPA-TDNN, OpenAI Whisper, GPT-4, text-embedding-3-small |
+| **Android** | Kotlin 2.0, Jetpack Compose, Hilt, API 35+ |
+| **Web** | Next.js, React 19, Vercel AI SDK, Tailwind CSS |
+| **Auth** | Firebase Authentication |
+| **Infra** | AWS CDK, ECS Fargate, Aurora Serverless v2, ALB |
 
-## Development Workflow
+## Deployment
 
-See `docs/IMPLEMENTATION_PLAN.md` for the vertical slice implementation approach.
+- **Backend**: AWS ECS Fargate behind Application Load Balancer
+- **Database**: Aurora Serverless v2 (PostgreSQL-compatible)
+- **Web**: Vercel
+- **Infrastructure**: Managed via AWS CDK (`infra/`)
+
+## Documentation
+
+- `docs/PRD_Frontier_Audio_MVP.md` – Product requirements
+- `docs/IMPLEMENTATION_PLAN.md` – Development approach
 
 ## License
 
