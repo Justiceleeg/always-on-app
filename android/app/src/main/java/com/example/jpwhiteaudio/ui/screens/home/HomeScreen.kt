@@ -343,20 +343,19 @@ private fun ListeningContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Add speaker button (placeholder)
-                OutlinedButton(
-                    onClick = { /* Placeholder - Slice 4 */ },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PersonAdd,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                    Text("Add Speaker")
-                }
+                // TODO: Add speaker functionality - hidden until implemented
+                // Spacer(modifier = Modifier.height(12.dp))
+                // OutlinedButton(
+                //     onClick = { /* Add speaker consent flow */ },
+                //     modifier = Modifier.fillMaxWidth()
+                // ) {
+                //     Icon(
+                //         imageVector = Icons.Default.PersonAdd,
+                //         contentDescription = null,
+                //         modifier = Modifier.padding(end = 8.dp)
+                //     )
+                //     Text("Add Speaker")
+                // }
             }
         }
     }
